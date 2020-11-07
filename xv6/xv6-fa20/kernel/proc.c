@@ -217,8 +217,13 @@ wait(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != proc)
         continue;
+      // Wait doesn't wait for child threads (same addr space).
+      // Wait only waits for child procs
+      if (p->parent->pgdir != proc->pgdir) {
+        continue;
+      }
       havekids = 1;
-      if(p->state == ZOMBIE){
+      if(p->state == ZOMBIE){ 
         // Found one.
         pid = p->pid;
         kfree(p->kstack);
@@ -443,4 +448,117 @@ procdump(void)
   }
 }
 
+// P4B
+int
+clone(void(*fcn)(void*), void *arg, void *stack)
+{
+  int i, pid;
+  struct proc *np;
+  uint argc, sp, ustack[3+MAXARG+1]; // for setting up user stack
+  char **argv;
 
+  // Allocate process.
+  if((np = allocproc()) == 0)
+    return -1;
+
+  // P4B Use the same page directory for thread (same proc)
+  np->pgdir = proc->pgdir; 
+  // if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
+  //   kfree(np->kstack);
+  //   np->kstack = 0;
+  //   np->state = UNUSED;
+  //   return -1;
+  // }
+  np->sz = (uint) stack + PGSIZE; // higher addr of new thread stack (one page)
+  np->parent = proc;
+  *np->tf = *proc->tf;
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->eax = 0;
+  
+  // P4B set up user stack (copied and modified from exec)
+  // TODO? The parameter arg in clone() can be a NULL pointer, and clone() should not fail.
+  argv = (char**) arg;
+  sp = np->sz;
+  for(argc = 0; argv[argc]; argc++) {
+    if(argc >= MAXARG)
+      goto bad;
+    sp -= strlen(argv[argc]) + 1;
+    sp &= ~3;
+    if(copyout(np->pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
+      goto bad;
+    ustack[3+argc] = sp;
+  }
+  ustack[3+argc] = 0;
+
+  ustack[0] = 0xffffffff;  // fake return PC // TODO: should this be fcn?
+  ustack[1] = argc;
+  ustack[2] = sp - (argc+1)*4;  // argv pointer
+
+  sp -= (3+argc+1) * 4;
+  if(copyout(np->pgdir, sp, ustack, (3+argc+1)*4) < 0)
+    goto bad;
+  // done with user stack?
+  
+  // P4B eip and esp ?
+  np->tf->eip = (uint) fcn;
+  np->tf->esp = sp;
+
+  for(i = 0; i < NOFILE; i++)
+    if(proc->ofile[i])
+      np->ofile[i] = filedup(proc->ofile[i]);
+  np->cwd = idup(proc->cwd);
+ 
+  pid = np->pid;
+  np->state = RUNNABLE;
+  safestrcpy(np->name, proc->name, sizeof(proc->name));
+  return pid;
+  
+  bad: // P4B TODO?
+    return -1;
+}
+
+// TODO: reduce duplicative code with wait
+int join(void **stack) {
+  struct proc *p;
+  int havekids, pid;
+
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for zombie children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != proc)
+        continue;
+      if (p->parent->pgdir != proc->pgdir) { // only join if same thread
+        continue
+      }
+      havekids = 1;
+      if(p->state == ZOMBIE){ 
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        // freevm(p->pgdir);
+        p->state = UNUSED;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        // P4B - send back the original stack addr for freeing by thread_join
+        *stack = (void*) p->sz - PGSIZE;
+        release(&ptable.lock);
+        return pid;
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || proc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(proc, &ptable.lock);  //DOC: wait-sleep
+  }
+}

@@ -88,3 +88,34 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// P4B
+int
+sys_clone(void)
+{
+  return -1;
+}
+
+int
+sys_join(void)
+{
+  return -1;
+}
+
+int
+sys_cond_init(void)
+{
+  return -1;
+}
+
+int
+sys_cond_wait(void)
+{
+  return -1;
+}
+
+int
+sys_cond_signal(void)
+{
+  return -1;
+}
