@@ -10,10 +10,15 @@ int thread_create(void (*start_routine)(void*), void *arg) {
   void *newStack;
   int pid;
   
+  printf(1, "thread_create 1\n"); // debug
+  
   newStack = malloc(PGSIZE);
   if (newStack == NULL) {
     return -1;
   }
+  
+  printf(1, "thread_create 2\n"); // debug
+  printf(1, "in thread_create - start_routine: %p, arg: %s\n", start_routine, arg);
   
   pid = clone(start_routine, arg, newStack);
   

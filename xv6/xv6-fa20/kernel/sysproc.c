@@ -93,13 +93,37 @@ sys_uptime(void)
 int
 sys_clone(void)
 {
-  return -1;
+  void* fcn;
+  void* arg;
+  void* stack;
+  
+  if (argptr(0, (void*) &fcn, sizeof(*fcn)) < 0) {
+    return -1;
+  }
+  if (argptr(1, (void*) &arg, sizeof(*arg)) < 0) {
+    return -1;
+  }
+  if (argptr(2, (void*) &stack, sizeof(*stack)) < 0) {
+    return -1;
+  }
+  
+  // debug
+  cprintf("in sys_clone - fcn: %p, arg: %s, stack: %d\n", fcn, arg, stack);
+  
+  return clone(fcn, arg, stack);
 }
 
+// **stack is used as output so that thread_join can free the stack
 int
 sys_join(void)
 {
-  return -1;
+  void *stack;
+  
+  if (argptr(0, (void*) &stack, sizeof(*stack)) < 0) {
+    return -1;
+  }
+  
+  return join(&stack);
 }
 
 int

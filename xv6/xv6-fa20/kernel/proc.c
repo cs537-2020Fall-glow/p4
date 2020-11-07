@@ -455,11 +455,14 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   int i, pid;
   struct proc *np;
   uint argc, sp, ustack[3+MAXARG+1]; // for setting up user stack
-  char **argv;
+  void **argv;
+  
+  cprintf("in clone() 460: fcn %p, arg: %s, stack: %d\n", fcn, arg, stack); // debug
 
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
+  cprintf("in clone() 465: after allocproc\n"); // debug
 
   // P4B Use the same page directory for thread (same proc)
   np->pgdir = proc->pgdir; 
@@ -472,18 +475,22 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   np->sz = (uint) stack + PGSIZE; // higher addr of new thread stack (one page)
   np->parent = proc;
   *np->tf = *proc->tf;
+  cprintf("in clone() 478: after pgdir and tf\n"); // debug
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
   
   // P4B set up user stack (copied and modified from exec)
   // TODO? The parameter arg in clone() can be a NULL pointer, and clone() should not fail.
-  argv = (char**) arg;
+  argv = &arg;
   sp = np->sz;
+  cprintf("in clone() 487: sp: %d\n", sp); // debug
   for(argc = 0; argv[argc]; argc++) {
+    cprintf("in clone() 489: argv[argc]: %s\n", argv[argc]); // debug
     if(argc >= MAXARG)
       goto bad;
     sp -= strlen(argv[argc]) + 1;
+    cprintf("in clone() stack %d: sp: %d\n", argc, sp); // debug
     sp &= ~3;
     if(copyout(np->pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
@@ -496,13 +503,16 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   ustack[2] = sp - (argc+1)*4;  // argv pointer
 
   sp -= (3+argc+1) * 4;
+  cprintf("in clone() 503: before copyout ustack\n"); // debug
   if(copyout(np->pgdir, sp, ustack, (3+argc+1)*4) < 0)
     goto bad;
   // done with user stack?
+  cprintf("in clone() 506: after ustack\n"); // debug
   
   // P4B eip and esp ?
   np->tf->eip = (uint) fcn;
   np->tf->esp = sp;
+  cprintf("in clone() 511: after eip\n"); // debug
 
   for(i = 0; i < NOFILE; i++)
     if(proc->ofile[i])
@@ -512,6 +522,7 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
+  cprintf("in clone() 521: before return\n"); // debug
   return pid;
   
   bad: // P4B TODO?
@@ -531,7 +542,7 @@ int join(void **stack) {
       if(p->parent != proc)
         continue;
       if (p->parent->pgdir != proc->pgdir) { // only join if same thread
-        continue
+        continue;
       }
       havekids = 1;
       if(p->state == ZOMBIE){ 
