@@ -26,9 +26,11 @@ main(int argc, char *argv[])
    ppid = getpid();
    int arg = 42;
    int thread_pid = thread_create(worker, &arg);
+   printf(1, "join.c: thread_pid: %d\n", thread_pid);
    assert(thread_pid > 0);
 
    int join_pid = thread_join();
+   printf(1, "join.c: join_pid: %d\n", join_pid);
    assert(join_pid == thread_pid);
    assert(global == 2);
 

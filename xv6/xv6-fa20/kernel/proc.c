@@ -187,12 +187,12 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
   
-  // cprintf("exit(): proc->pid: %d is exiting\n", proc->pid);
+  cprintf("exit(): proc->pid: %d is exiting\n", proc->pid);
   
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == proc){
-      // cprintf("exit: p->pid: %d\n", p->pid);
+      cprintf("exit: p->pid: %d\n", p->pid);
       // cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
       p->parent = initproc;
       // cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
@@ -225,23 +225,13 @@ wait(void)
         continue;
       // P4B: Wait doesn't wait for child threads (same addr space).
       // Wait only waits for child procs
-      // debug
-      // cprintf("p->pgdir: %d, proc->pgdir: %d, p->parent->pgdir: %d, proc->parent->pgdir: %d\n",
-      //   p->pgdir, proc->pgdir, p->parent->pgdir, proc->parent->pgdir);
-      // cprintf("p->pid: %d, proc->pid: %d, p->parent->pid: %d, proc->parent->pid: %d\n", p->pid, proc->pid, p->parent->pid, proc->parent->pid);
-      // if (p->pgdir == proc->pgdir) {
-      //   cprintf("wait: same thread\n"); //debug
-      //   continue;
-      // }
-      // cprintf("wait(): proc->pid: %d, p->pid: %d\n", proc->pid, p->pid);
-      // cprintf("wait(): p->parent->pid: %d\n", p->parent->pid);
       havekids = 1;
       if(p->state == ZOMBIE){ 
         // Found one.
-        cprintf("Found one\n");
+        // cprintf("wait(): Found p->pid: %d\n", p->pid);
         pid = p->pid;
-        p->kstack = 0;
         p->state = UNUSED;
+        p->kstack = 0;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -257,9 +247,11 @@ wait(void)
           }
         }
         if (notLastThread) {
+          // cprintf("wait(): not last ref\n");
           p->pgdir = 0;
           p->kstack = 0;
         } else {
+          // cprintf("wait(): last ref\n");
           freevm(p->pgdir);
           kfree(p->kstack);
         }
@@ -548,15 +540,22 @@ int join(void **stack) {
   for(;;){
     // Scan through table looking for zombie children.
     havekids = 0;
+    // cprintf("join(): outer for\n");
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != proc)
+      // cprintf("join(): inner for\n");
+      cprintf("join(): p->pid: %d\n", p->pid);
+      if(p->parent != proc) {
+        cprintf("join(): not same parent\n"); //debug
         continue;
+      }
       if (p->pgdir != proc->pgdir) { // only join if same thread
+        cprintf("join(): same pgdir\n"); //debug
         continue;
       }
       havekids = 1;
       if(p->state == ZOMBIE){ 
         // Found one.
+        cprintf("join(): Found p->pid: %d\n", p->pid);
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -569,6 +568,7 @@ int join(void **stack) {
         // P4B - send back the original stack addr for freeing by thread_join
         *stack = (void*) p->sz - PGSIZE;
         release(&ptable.lock);
+        cprintf("join(): return pid: %d\n", pid);
         return pid;
       }
     }
