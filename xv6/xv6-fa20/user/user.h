@@ -1,6 +1,11 @@
 #ifndef _USER_H_
 #define _USER_H_
 
+// P4B
+typedef struct __lock_t {
+  uint locked;
+} lock_t;
+
 struct stat;
 
 // system calls

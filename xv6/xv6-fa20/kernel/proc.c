@@ -107,6 +107,7 @@ int
 growproc(int n)
 {
   uint sz;
+  struct proc* p;
   
   sz = proc->sz;
   if(n > 0){
@@ -117,6 +118,20 @@ growproc(int n)
       return -1;
   }
   proc->sz = sz;
+
+  // P4B - update size in threads created from this process
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    // if(p->parent != proc) {
+    //   continue;
+    // }
+    if (p->pgdir != proc->pgdir) {
+      continue;
+    }
+    p->sz = proc->sz;
+  }
+  release(&ptable.lock);
+
   switchuvm(proc);
   return 0;
 }
@@ -491,8 +506,9 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   // P4B Use the same page directory for thread (same proc)
   np->pgdir = proc->pgdir; 
 
-  np->sz = (uint) stack + PGSIZE; // higher addr of new thread stack (one page)
-  cprintf("clone(): pid %d np->sz = %d\n", np->pid, np->sz);
+  np->stackHigh = (uint) stack + PGSIZE;
+  np->sz = proc->sz; // higher addr of new thread stack (one page)
+  //cprintf("clone(): pid %d np->sz = %d\n", np->pid, np->sz);
   np->parent = proc;
   // cprintf("in clone() 477: np->parent->pid: %d\n", np->parent->pid); // debug
   
@@ -504,7 +520,8 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   
   // P4B set up user stack
   // TODO? The parameter arg in clone() can be a NULL pointer, and clone() should not fail.
-  sp = np->sz;
+  //sp = np->sz;
+  sp = np->stackHigh;
 
   ustack[0] = 0xffffffff;  // graceful exit is handled in trap.c
   ustack[1] = (uint)arg;
@@ -530,7 +547,7 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   // cprintf("in clone() 521: before return\n"); // debug
 
-  cprintf("clone(): pid %d stack is %d\n", np->pid, (uint)stack);
+  //cprintf("clone(): pid %d stack is %d\n", np->pid, (uint)stack);
 
   return pid;
   
@@ -576,7 +593,7 @@ int join(void **stack) {
         p->name[0] = 0;
         p->killed = 0;
         // P4B - send back the original stack addr for freeing by thread_join
-        *stack = (void*) p->sz - PGSIZE;
+        *stack = (void*) p->stackHigh - PGSIZE;
         release(&ptable.lock);
         return pid;
       }

@@ -27,6 +27,7 @@ USER_PROGS := \
 	recursion2\
 	two_threads\
 	two_threads_temp\
+	size\
 	zombie
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
@@ -37,6 +38,7 @@ USER_LIBS := \
 	usys.o\
 	printf.o\
 	thread.o\
+	lock.o\
 	umalloc.o
 
 USER_LIBS := $(addprefix user/, $(USER_LIBS))
