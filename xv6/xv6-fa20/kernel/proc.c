@@ -492,7 +492,7 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   np->pgdir = proc->pgdir; 
 
   np->sz = (uint) stack + PGSIZE; // higher addr of new thread stack (one page)
-  cprintf("clone(): pid %d np->sz = %d\n", np->pid, np->sz);
+  //cprintf("clone(): pid %d np->sz = %d\n", np->pid, np->sz);
   np->parent = proc;
   // cprintf("in clone() 477: np->parent->pid: %d\n", np->parent->pid); // debug
   
@@ -530,7 +530,7 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   // cprintf("in clone() 521: before return\n"); // debug
 
-  cprintf("clone(): pid %d stack is %d\n", np->pid, (uint)stack);
+  //cprintf("clone(): pid %d stack is %d\n", np->pid, (uint)stack);
 
   return pid;
   

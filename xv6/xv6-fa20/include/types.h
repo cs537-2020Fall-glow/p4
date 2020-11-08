@@ -8,7 +8,6 @@ typedef unsigned short ushort;
 typedef unsigned char  uchar;
 typedef uint pde_t;
 // P4B
-typedef uint lock_t; //TODO 
 typedef uint cond_t; //TODO 
 
 #ifndef NULL
