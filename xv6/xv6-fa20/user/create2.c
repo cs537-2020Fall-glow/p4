@@ -26,6 +26,7 @@ main(int argc, char *argv[])
 {
    ppid = getpid();
    printf(1, "create2.c: arg: %d\n", arg);
+   printf(1, "create2.c: &arg: %p\n", &arg);
    int thread_pid = thread_create(worker, (void*)&arg);
    assert(thread_pid > 0);
    while(global != 55);
@@ -37,7 +38,13 @@ main(int argc, char *argv[])
 void
 worker(void *arg_ptr) {
    int tmp = *(int*)arg_ptr;
+  //  int tmp2 = *(int*)3;
+   printf(1, "create2.c: tmp: %d\n", tmp);
+  //  printf(1, "create2.c: arg_ptr: %p\n", arg_ptr);
+  //  printf(1, "create2.c: tmp2: %d\n", tmp2);
    *(int*)arg_ptr = 1;
+   printf(1, "create2.c: arg_ptr: %d\n", *(int*)arg_ptr);
    assert(global == 1);
    global = tmp;
+   printf(1, "create2.c: global: %d\n", global);
 }

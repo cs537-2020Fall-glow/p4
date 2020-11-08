@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 
 void mythread(void *arg) {
   int pid = getpid();
-  printf(1, "in mythread: %s\n", (char *) arg);
+  printf(1, "in mythread: %s\n", arg);
   printf(1, "in mythread: pid %d\n", pid);
   exit();
 }

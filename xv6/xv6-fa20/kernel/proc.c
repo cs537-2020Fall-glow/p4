@@ -187,15 +187,15 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
   
-  cprintf("exit(): proc->pid: %d is exiting\n", proc->pid);
+  // cprintf("exit(): proc->pid: %d is exiting\n", proc->pid);
   
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == proc){
-      cprintf("exit: p->pid: %d\n", p->pid);
-      cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
+      // cprintf("exit: p->pid: %d\n", p->pid);
+      // cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
       p->parent = initproc;
-      cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
+      // cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
       if(p->state == ZOMBIE)
         wakeup1(initproc);
     }
@@ -233,8 +233,8 @@ wait(void)
       //   cprintf("wait: same thread\n"); //debug
       //   continue;
       // }
-      cprintf("wait(): proc->pid: %d, p->pid: %d\n", proc->pid, p->pid);
-      cprintf("wait(): p->parent->pid: %d\n", p->parent->pid);
+      // cprintf("wait(): proc->pid: %d, p->pid: %d\n", proc->pid, p->pid);
+      // cprintf("wait(): p->parent->pid: %d\n", p->parent->pid);
       havekids = 1;
       if(p->state == ZOMBIE){ 
         // Found one.
@@ -483,10 +483,9 @@ clone(void(*fcn)(void*), void *arg, void *stack)
 {
   int i, pid;
   struct proc *np;
-  uint argc, sp, ustack[3+MAXARG+1]; // for setting up user stack
-  void **argv;
+  uint sp, ustack[2]; // for setting up user stack
   
-  // cprintf("in clone() 460: fcn: %p, arg: %s, stack: %d\n", fcn, arg, stack); // debug
+  // cprintf("clone(): 460: fcn: %p, arg: %d, stack: %d\n", fcn, *(int*)arg, stack); // debug
   // cprintf("in clone() 460: proc->pid: %d\n", proc->pid); // debug
 
   // Allocate process.
@@ -496,12 +495,7 @@ clone(void(*fcn)(void*), void *arg, void *stack)
 
   // P4B Use the same page directory for thread (same proc)
   np->pgdir = proc->pgdir; 
-  // if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
-  //   kfree(np->kstack);
-  //   np->kstack = 0;
-  //   np->state = UNUSED;
-  //   return -1;
-  // }
+
   np->sz = (uint) stack + PGSIZE; // higher addr of new thread stack (one page)
   np->parent = proc;
   // cprintf("in clone() 477: np->parent->pid: %d\n", np->parent->pid); // debug
@@ -512,36 +506,20 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
   
-  // P4B set up user stack (copied and modified from exec)
+  // P4B set up user stack
   // TODO? The parameter arg in clone() can be a NULL pointer, and clone() should not fail.
-  argv = &arg;
   sp = np->sz;
-  // cprintf("in clone() 487: sp: %d\n", sp); // debug
-  for(argc = 0; argv[argc]; argc++) {
-    // cprintf("in clone() 489: argv[argc]: %s\n", argv[argc]); // debug
-    if(argc >= MAXARG)
-      goto bad;
-    sp -= strlen(argv[argc]) + 1;
-    // cprintf("in clone() stack %d: sp: %d\n", argc, sp); // debug
-    sp &= ~3;
-    if(copyout(np->pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
-      goto bad;
-    ustack[3+argc] = sp;
-  }
-  ustack[3+argc] = 0;
 
-  ustack[0] = 0xffffffff;  // TODO: exit gracefully?
-  ustack[1] = argc;
-  ustack[2] = sp - (argc+1)*4;  // argv pointer
+  ustack[0] = 0xffffffff;  // graceful exit is handled in trap.c
+  ustack[1] = (uint)arg;
 
-  sp -= (3+argc+1) * 4;
+  sp -= sizeof(arg) + 4;
   // cprintf("in clone() 503: before copyout ustack\n"); // debug
-  if(copyout(np->pgdir, sp, ustack, (3+argc+1)*4) < 0)
+  if(copyout(np->pgdir, sp, ustack, sizeof(arg) + 4) < 0)
     goto bad;
-  // done with user stack?
   // cprintf("in clone() 506: after ustack\n"); // debug
   
-  // P4B eip and esp ?
+  // P4B eip and esp
   np->tf->eip = (uint) fcn;
   np->tf->esp = sp;
   // cprintf("in clone() 511: after eip\n"); // debug
@@ -573,7 +551,7 @@ int join(void **stack) {
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != proc)
         continue;
-      if (p->parent->pgdir != proc->pgdir) { // only join if same thread
+      if (p->pgdir != proc->pgdir) { // only join if same thread
         continue;
       }
       havekids = 1;

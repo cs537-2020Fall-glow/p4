@@ -284,7 +284,7 @@ freevm(pde_t *pgdir)
 {
   uint i;
   
-  cprintf("freevm: pgdir: %d\n", pgdir); //debug
+  // cprintf("freevm: pgdir: %d\n", pgdir); //debug
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
