@@ -83,6 +83,13 @@ trap(struct trapframe *tf)
               tf->trapno, cpu->id, tf->eip, rcr2());
       panic("trap");
     }
+    
+    // P4B - exit gracefully if eip is 0xffffffff
+    if (proc->tf->eip == 0xffffffff) {
+      proc->killed = 1;
+      break;
+    }
+    
     // In user space, assume process misbehaved.
     cprintf("pid %d %s: trap %d err %d on cpu %d "
             "eip 0x%x addr 0x%x--kill proc\n",

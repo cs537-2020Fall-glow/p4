@@ -1,4 +1,4 @@
-/* clone and play with the argument */
+/* threads across processes should not share data */
 #include "types.h"
 #include "user.h"
 
@@ -6,11 +6,8 @@
 #define NULL ((void*)0)
 
 #define PGSIZE (4096)
-
 int ppid;
-volatile int arg = 55;
-volatile int global = 1;
-
+int global = 0;
 #define assert(x) if (x) {} else { \
    printf(1, "%s: %d ", __FILE__, __LINE__); \
    printf(1, "assert failed (%s)\n", # x); \
@@ -24,20 +21,26 @@ void worker(void *arg_ptr);
 int
 main(int argc, char *argv[])
 {
+   int p;
    ppid = getpid();
-   printf(1, "create2.c: arg: %d\n", arg);
-   int thread_pid = thread_create(worker, (void*)&arg);
-   assert(thread_pid > 0);
-   while(global != 55);
-   assert(arg == 1);
+   for (p=0; p<2; p++) {
+       if (fork() == 0) {
+           assert(global == 0);
+           assert(thread_create(worker, 0) > 0);
+           assert(thread_join() > 0);
+           assert(global == 100);
+           exit();
+       }
+   }
+   for (p=0;p<2;p++) wait();
    printf(1, "TEST PASSED\n");
    exit();
+
 }
 
 void
 worker(void *arg_ptr) {
-   int tmp = *(int*)arg_ptr;
-   *(int*)arg_ptr = 1;
-   assert(global == 1);
-   global = tmp;
+    int i;
+    for (i=0;i<100;i++)
+        global++;
 }

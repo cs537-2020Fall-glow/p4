@@ -24,7 +24,11 @@ int
 main(int argc, char *argv[])
 {
    ppid = getpid();
+   printf(1, "create main(): ppid: %d\n", ppid);
+   
    int clone_pid = thread_create(worker, 0);
+   printf(1, "create main(): clone_pid: %d\n", clone_pid);
+   
    assert(clone_pid > 0);
    while(global != 5);
    printf(1, "TEST PASSED\n");

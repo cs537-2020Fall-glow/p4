@@ -1,4 +1,4 @@
-/* clone and play with the argument */
+/* clone and join syscalls */
 #include "types.h"
 #include "user.h"
 
@@ -8,8 +8,7 @@
 #define PGSIZE (4096)
 
 int ppid;
-volatile int arg = 55;
-volatile int global = 1;
+int global = 1;
 
 #define assert(x) if (x) {} else { \
    printf(1, "%s: %d ", __FILE__, __LINE__); \
@@ -25,19 +24,23 @@ int
 main(int argc, char *argv[])
 {
    ppid = getpid();
-   printf(1, "create2.c: arg: %d\n", arg);
-   int thread_pid = thread_create(worker, (void*)&arg);
+   int arg = 42;
+   int thread_pid = thread_create(worker, &arg);
    assert(thread_pid > 0);
-   while(global != 55);
-   assert(arg == 1);
+
+   int join_pid = thread_join();
+   assert(join_pid == thread_pid);
+   assert(global == 2);
+
    printf(1, "TEST PASSED\n");
    exit();
 }
 
 void
 worker(void *arg_ptr) {
-   int tmp = *(int*)arg_ptr;
-   *(int*)arg_ptr = 1;
+   int arg = *(int*)arg_ptr;
+   assert(arg == 42);
    assert(global == 1);
-   global = tmp;
+   global++;
 }
+

@@ -1,4 +1,4 @@
-/* clone and play with the argument */
+/* shouldn't trap at stack bound */
 #include "types.h"
 #include "user.h"
 
@@ -8,9 +8,7 @@
 #define PGSIZE (4096)
 
 int ppid;
-volatile int arg = 55;
-volatile int global = 1;
-
+int cnt, d;
 #define assert(x) if (x) {} else { \
    printf(1, "%s: %d ", __FILE__, __LINE__); \
    printf(1, "assert failed (%s)\n", # x); \
@@ -20,24 +18,32 @@ volatile int global = 1;
 }
 
 void worker(void *arg_ptr);
+int f(int);
 
 int
 main(int argc, char *argv[])
 {
-   ppid = getpid();
-   printf(1, "create2.c: arg: %d\n", arg);
-   int thread_pid = thread_create(worker, (void*)&arg);
-   assert(thread_pid > 0);
-   while(global != 55);
-   assert(arg == 1);
+   cnt = 0;
+   d = 127;
+   assert(thread_create(worker, (void *)&d) > 0);
+   assert(thread_join() > 0);
+   assert(cnt == 126);
+   cnt = 0;
+   d = 128;
+   assert(thread_create(worker, (void *)&d) > 0);
+   assert(thread_join() > 0);
+   assert(cnt == 127);
    printf(1, "TEST PASSED\n");
    exit();
 }
 
+int f(int i) {
+  if (i <= 1) return 1;
+  cnt++;
+  return f(i-1) + i;
+}
+
 void
 worker(void *arg_ptr) {
-   int tmp = *(int*)arg_ptr;
-   *(int*)arg_ptr = 1;
-   assert(global == 1);
-   global = tmp;
+    f(*(int *)arg_ptr);
 }

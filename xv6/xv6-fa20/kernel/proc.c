@@ -186,11 +186,16 @@ exit(void)
 
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
-
+  
+  cprintf("exit(): proc->pid: %d is exiting\n", proc->pid);
+  
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == proc){
+      cprintf("exit: p->pid: %d\n", p->pid);
+      cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
       p->parent = initproc;
+      cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
       if(p->state == ZOMBIE)
         wakeup1(initproc);
     }
@@ -209,6 +214,7 @@ wait(void)
 {
   struct proc *p;
   int havekids, pid;
+  int notLastThread;
 
   acquire(&ptable.lock);
   for(;;){
@@ -217,23 +223,46 @@ wait(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != proc)
         continue;
-      // Wait doesn't wait for child threads (same addr space).
+      // P4B: Wait doesn't wait for child threads (same addr space).
       // Wait only waits for child procs
-      if (p->parent->pgdir != proc->pgdir) {
-        continue;
-      }
+      // debug
+      // cprintf("p->pgdir: %d, proc->pgdir: %d, p->parent->pgdir: %d, proc->parent->pgdir: %d\n",
+      //   p->pgdir, proc->pgdir, p->parent->pgdir, proc->parent->pgdir);
+      // cprintf("p->pid: %d, proc->pid: %d, p->parent->pid: %d, proc->parent->pid: %d\n", p->pid, proc->pid, p->parent->pid, proc->parent->pid);
+      // if (p->pgdir == proc->pgdir) {
+      //   cprintf("wait: same thread\n"); //debug
+      //   continue;
+      // }
+      cprintf("wait(): proc->pid: %d, p->pid: %d\n", proc->pid, p->pid);
+      cprintf("wait(): p->parent->pid: %d\n", p->parent->pid);
       havekids = 1;
       if(p->state == ZOMBIE){ 
         // Found one.
+        cprintf("Found one\n");
         pid = p->pid;
-        kfree(p->kstack);
         p->kstack = 0;
-        freevm(p->pgdir);
         p->state = UNUSED;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+        
+        // P4B - do not free until last reference
+        struct proc *p_inner;
+        notLastThread = 0;
+        for (p_inner = ptable.proc; p_inner < &ptable.proc[NPROC]; p_inner++) {
+          if (p_inner->pgdir == p->pgdir) {
+            notLastThread = 1;
+            break;
+          }
+        }
+        if (notLastThread) {
+          p->pgdir = 0;
+          p->kstack = 0;
+        } else {
+          freevm(p->pgdir);
+          kfree(p->kstack);
+        }
         release(&ptable.lock);
         return pid;
       }
@@ -457,12 +486,13 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   uint argc, sp, ustack[3+MAXARG+1]; // for setting up user stack
   void **argv;
   
-  cprintf("in clone() 460: fcn %p, arg: %s, stack: %d\n", fcn, arg, stack); // debug
+  // cprintf("in clone() 460: fcn: %p, arg: %s, stack: %d\n", fcn, arg, stack); // debug
+  // cprintf("in clone() 460: proc->pid: %d\n", proc->pid); // debug
 
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
-  cprintf("in clone() 465: after allocproc\n"); // debug
+  // cprintf("in clone() 465: after allocproc\n"); // debug
 
   // P4B Use the same page directory for thread (same proc)
   np->pgdir = proc->pgdir; 
@@ -474,8 +504,10 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   // }
   np->sz = (uint) stack + PGSIZE; // higher addr of new thread stack (one page)
   np->parent = proc;
+  // cprintf("in clone() 477: np->parent->pid: %d\n", np->parent->pid); // debug
+  
   *np->tf = *proc->tf;
-  cprintf("in clone() 478: after pgdir and tf\n"); // debug
+  // cprintf("in clone() 478: after pgdir and tf\n"); // debug
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -484,13 +516,13 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   // TODO? The parameter arg in clone() can be a NULL pointer, and clone() should not fail.
   argv = &arg;
   sp = np->sz;
-  cprintf("in clone() 487: sp: %d\n", sp); // debug
+  // cprintf("in clone() 487: sp: %d\n", sp); // debug
   for(argc = 0; argv[argc]; argc++) {
-    cprintf("in clone() 489: argv[argc]: %s\n", argv[argc]); // debug
+    // cprintf("in clone() 489: argv[argc]: %s\n", argv[argc]); // debug
     if(argc >= MAXARG)
       goto bad;
     sp -= strlen(argv[argc]) + 1;
-    cprintf("in clone() stack %d: sp: %d\n", argc, sp); // debug
+    // cprintf("in clone() stack %d: sp: %d\n", argc, sp); // debug
     sp &= ~3;
     if(copyout(np->pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
@@ -498,21 +530,21 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   }
   ustack[3+argc] = 0;
 
-  ustack[0] = 0xffffffff;  // fake return PC // TODO: should this be fcn?
+  ustack[0] = 0xffffffff;  // TODO: exit gracefully?
   ustack[1] = argc;
   ustack[2] = sp - (argc+1)*4;  // argv pointer
 
   sp -= (3+argc+1) * 4;
-  cprintf("in clone() 503: before copyout ustack\n"); // debug
+  // cprintf("in clone() 503: before copyout ustack\n"); // debug
   if(copyout(np->pgdir, sp, ustack, (3+argc+1)*4) < 0)
     goto bad;
   // done with user stack?
-  cprintf("in clone() 506: after ustack\n"); // debug
+  // cprintf("in clone() 506: after ustack\n"); // debug
   
   // P4B eip and esp ?
   np->tf->eip = (uint) fcn;
   np->tf->esp = sp;
-  cprintf("in clone() 511: after eip\n"); // debug
+  // cprintf("in clone() 511: after eip\n"); // debug
 
   for(i = 0; i < NOFILE; i++)
     if(proc->ofile[i])
@@ -522,7 +554,7 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
-  cprintf("in clone() 521: before return\n"); // debug
+  // cprintf("in clone() 521: before return\n"); // debug
   return pid;
   
   bad: // P4B TODO?
