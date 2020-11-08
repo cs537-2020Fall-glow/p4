@@ -12,12 +12,15 @@
   
 ###
 - sysproc.c: sys_* definitions
-
+- stackHigh: new proc struct member to track the high stack address for threads
 
 ### thread library
 - thread.c: thread_create and thread_join definitions
 - thread.o added to user makefile in USER_LIBS section
 
 ### other system calls
-- wait()
+#### wait
   - ignore threads of the same process by checking if the pgdir values are equal
+#### sbrk and growproc
+- update sz for all threads in same process
+  - by looping through proc table similar to wait() and join(
