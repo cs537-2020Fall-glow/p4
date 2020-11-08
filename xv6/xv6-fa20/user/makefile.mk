@@ -16,6 +16,16 @@ USER_PROGS := \
 	tester\
 	usertests\
 	wc\
+	testThread1\
+	clone_clone\
+	create\
+	create2\
+	join\
+	join2\
+	fork_clone\
+	recursion\
+	recursion2\
+	two_threads\
 	zombie
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
