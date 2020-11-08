@@ -187,12 +187,12 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
   
-  cprintf("exit(): proc->pid: %d is exiting\n", proc->pid);
+  //cprintf("exit(): proc->pid: %d is exiting\n", proc->pid);
   
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == proc){
-      cprintf("exit: p->pid: %d\n", p->pid);
+      //cprintf("exit: p->pid: %d\n", p->pid);
       // cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
       p->parent = initproc;
       // cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
@@ -397,8 +397,9 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan) {
       p->state = RUNNABLE;
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -476,6 +477,8 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   int i, pid;
   struct proc *np;
   uint sp, ustack[2]; // for setting up user stack
+
+  
   
   // cprintf("clone(): 460: fcn: %p, arg: %d, stack: %d\n", fcn, *(int*)arg, stack); // debug
   // cprintf("in clone() 460: proc->pid: %d\n", proc->pid); // debug
@@ -489,6 +492,7 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   np->pgdir = proc->pgdir; 
 
   np->sz = (uint) stack + PGSIZE; // higher addr of new thread stack (one page)
+  cprintf("clone(): pid %d np->sz = %d\n", np->pid, np->sz);
   np->parent = proc;
   // cprintf("in clone() 477: np->parent->pid: %d\n", np->parent->pid); // debug
   
@@ -525,6 +529,9 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   // cprintf("in clone() 521: before return\n"); // debug
+
+  cprintf("clone(): pid %d stack is %d\n", np->pid, (uint)stack);
+
   return pid;
   
   bad: // P4B TODO?
@@ -536,6 +543,8 @@ int join(void **stack) {
   struct proc *p;
   int havekids, pid;
 
+  //cprintf("join(): called by %d\n", proc->pid);
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for zombie children.
@@ -543,19 +552,20 @@ int join(void **stack) {
     // cprintf("join(): outer for\n");
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       // cprintf("join(): inner for\n");
-      cprintf("join(): p->pid: %d\n", p->pid);
+      if (p->pid != 0) {
+        //cprintf("join(): p->pid: %d\n", p->pid); //P4B debugging
+      }
       if(p->parent != proc) {
-        cprintf("join(): not same parent\n"); //debug
+        //cprintf("join(): not same parent\n"); //debug
         continue;
       }
       if (p->pgdir != proc->pgdir) { // only join if same thread
-        cprintf("join(): same pgdir\n"); //debug
+        //cprintf("join(): same pgdir\n"); //debug
         continue;
       }
       havekids = 1;
       if(p->state == ZOMBIE){ 
         // Found one.
-        cprintf("join(): Found p->pid: %d\n", p->pid);
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -568,7 +578,6 @@ int join(void **stack) {
         // P4B - send back the original stack addr for freeing by thread_join
         *stack = (void*) p->sz - PGSIZE;
         release(&ptable.lock);
-        cprintf("join(): return pid: %d\n", pid);
         return pid;
       }
     }
