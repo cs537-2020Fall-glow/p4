@@ -26,6 +26,7 @@ USER_PROGS := \
 	recursion\
 	recursion2\
 	two_threads\
+	two_threads_temp\
 	zombie
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))

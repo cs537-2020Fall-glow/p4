@@ -29,25 +29,26 @@ int main(int argc, char *argv[]) {
   assert((thread2 = thread_create(worker2, 0)) > 0);
   // printf(1, "ppid: %d, thread1: %d, thread2: %d\n", ppid, thread1, thread2);
   printf(1, "two_threads.c: thread1: %d, thread2: %d\n", thread1, thread2);
-  assert(thread_join() == thread2);
-  assert(global == 2);
-  printf(1, "two_threads.c: joined thread2\n");
+  assert(thread_join() == thread1);
+  assert(global == 1);
+  printf(1, "two_threads.c: joined thread1\n");
   
   int retJoinThread1 = thread_join();
   printf(1, "two_threads.c: retJoinThread1: %d\n", retJoinThread1);
-  assert(retJoinThread1 == thread1);
-  assert(global == 1);
+  assert(retJoinThread1 == thread2);
+  assert(global == 2);
 
   printf(1, "TEST PASSED\n");
   exit();
 }
 
 void worker(void *arg_ptr) {
-  sleep(100);
+
   global = 1;
 }
 
 void worker2(void *arg_ptr) {
+  sleep(10);
   global = 2;
   ;
 }

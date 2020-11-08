@@ -32,8 +32,9 @@ int thread_join() {
   int pid;
   
   pid = join(&stack);
+  printf(1, "thread_join(): pid %d stack is %d\n", pid, (uint)stack);
   if (pid != -1) {
-    free(stack);
+   free(stack);
   }
   
   return pid;
