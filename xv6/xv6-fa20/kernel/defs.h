@@ -16,6 +16,11 @@ struct buf*     bread(uint, uint);
 void            brelse(struct buf*);
 void            bwrite(struct buf*);
 
+// P4B cond.c
+void cond_init(cond_t *);
+void cond_wait(cond_t *, lock_t *);
+void cond_signal(cond_t *);
+
 // console.c
 void            consoleinit(void);
 void            cprintf(char*, ...);
