@@ -18,7 +18,7 @@ char isEmpty(cond_t *pq) { return (pq->head == -1 || pq->tail == -1); }
  * Add to the back of the queue by inserting after tail node
  */
 int enqueue(cond_t *pq, int pid) {
-  if (pq->size >= NPROC) {
+  if (pq->size >= NTHREAD) {
     return -1;
   }
   
@@ -26,7 +26,7 @@ int enqueue(cond_t *pq, int pid) {
     pq->head++;
     pq->tail++;
   } else {
-    pq->tail = (pq->tail + 1) % NPROC;
+    pq->tail = (pq->tail + 1) % NTHREAD;
   }
     
   pq->pid[pq->tail] = pid;
@@ -51,7 +51,7 @@ int dequeue(cond_t *pq) {
     setQueueEmpty(pq);
     // cprintf("setQueueEmpty() h %d t %d s %d pid %d\n", pq->head, pq->tail, pq->size, pq->pid[pq->head]);
   } else {
-    pq->head = (pq->head + 1) % NPROC;
+    pq->head = (pq->head + 1) % NTHREAD;
   }
   
   pq->size--;
@@ -59,12 +59,14 @@ int dequeue(cond_t *pq) {
 }
 
 void setQueueEmpty(cond_t *pq) {
+  cprintf("setQueueEmpty() h %d t %d s %d pid %d\n", pq->head, pq->tail, pq->size, pq->pid[pq->head]);
   pq->head = -1;
   pq->tail = -1;
   pq->size = 0;
-  for (int i = 0; i < NPROC; i++) {
+  for (int i = 0; i < NTHREAD; i++) {
     pq->pid[i] = 0;
   }
+  cprintf("setQueueEmpty() h %d t %d s %d pid %d\n", pq->head, pq->tail, pq->size, pq->pid[pq->head]);
 }
 
 /**
@@ -93,7 +95,7 @@ int swapHead(cond_t *pq, int pid) {
   
   // find pid in PQ
   int currIndex = -1;
-  for(int i = 0; i < NPROC; i++) {
+  for(int i = 0; i < NTHREAD; i++) {
     if (pq->pid[i] == pid) {
       currIndex = i;
       break;

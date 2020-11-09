@@ -137,17 +137,37 @@ sys_cond_init(void)
   
   cond_init(cv);
   
-  return 0;
+  return 0; // Does this need to return anything special?
 }
 
 int
 sys_cond_wait(void)
 {
-  return 0;
+  cond_t *cv;
+  lock_t *call_lock;
+  
+  if (argptr(0, (void*) &cv, sizeof(cv)) < 0) {
+    return -1;
+  }
+  if (argptr(1, (void*) &call_lock, sizeof(call_lock)) < 0) {
+    return -1;
+  }
+  
+  cond_wait(cv, call_lock);
+  
+  return 0; // Does this need to return anything special?
 }
 
 int
 sys_cond_signal(void)
 {
-  return 0;
+  cond_t *cv;
+  
+  if (argptr(0, (void*) &cv, sizeof(cv)) < 0) {
+    return -1;
+  }
+  
+  cond_signal(cv);
+  
+  return 0; // Does this need to return anything special?
 }

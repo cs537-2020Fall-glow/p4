@@ -39,6 +39,9 @@ main(int argc, char *argv[])
 
 void
 worker(void *arg_ptr) {
-  printf(1, "worker(): \n");
+  printf(1, "worker(): here I am\n");
+  lock_acquire(&lock);
+  cond_wait(&cond, &lock);
+  lock_release(&lock);
 }
 

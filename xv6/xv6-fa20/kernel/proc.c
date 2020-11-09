@@ -5,6 +5,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "circleQueue.h"
 
 struct {
   struct spinlock lock;
@@ -607,5 +608,29 @@ int join(void **stack) {
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
+  }
+}
+
+void cond_signal(cond_t *cv) {
+  if (isEmpty(cv)) {
+    panic("cond_signal(): Condition variable queue is empty!\n");
+  }
+  
+  int headPid;
+  struct proc* p;
+  
+  cprintf("cond_signal(): proc->pid: %d\n", proc->pid); // debug
+  acquire(&cv->queue_lock);
+  headPid = dequeue(cv);
+  cprintf("cond_signal(): headPid: %d\n", headPid);
+  release(&cv->queue_lock);
+  
+  // Wake up thread at front of cv queue
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->pid == headPid) {
+      wakeup(p);
+      cprintf("cond_signal(): p->pid: %d\n", p->pid);
+      break;
+    }
   }
 }

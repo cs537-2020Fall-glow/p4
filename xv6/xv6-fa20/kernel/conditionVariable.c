@@ -7,10 +7,10 @@
 #include "spinlock.h"
 #include "circleQueue.h"
 
-void cond_init(cond_t * cv) {
+void cond_init(cond_t *cv) {
   setQueueEmpty(cv);
   initlock(&cv->queue_lock, "queuelock");
-  cprintf("condinit(): cv")
+  cprintf("condinit(): pid: %d, head: %d, tail: %d, size: %d, lock name: %s\n", cv->pid[0], cv->head, cv->tail, cv->size, cv->queue_lock.name); // debug
 }
 
 void cond_wait(cond_t *cv, lock_t *call_lock) {
@@ -21,13 +21,17 @@ void cond_wait(cond_t *cv, lock_t *call_lock) {
     panic("cond_wait(): Condition variable queue is full!\n");
   }
   
+  cprintf("cond_wait: proc->pid: %d\n", proc->pid); // debug
+  cprintf("cond_wait(): pid: %d, head: %d, tail: %d, size: %d, lock name: %s\n", cv->pid[0], cv->head, cv->tail, cv->size, cv->queue_lock.name); // debug
   
+  acquire(&cv->queue_lock);
+  cprintf("cond_wait(): after acquire\n");
   enqueue(cv, proc->pid);
-  
-  
+  cprintf("cond_wait(): after enqueue\n");
+  cprintf("cond_wait(): pid: %d, head: %d, tail: %d, size: %d, lock name: %s\n", cv->pid[0], cv->head, cv->tail, cv->size, cv->queue_lock.name); // debug
+  // release(&cv->queue_lock);
+  sleep(proc, &cv->queue_lock);
+  cprintf("cond_wait(): after sleep\n");
+  xchg(&call_lock->locked, 0); // this is a duplicate of lock_release
+  cprintf("cond_wait(): after release calling lock\n");
 }
-
-void cond_signal(cond_t *cv) {
-  
-}
-

@@ -32,14 +32,17 @@ main(int argc, char *argv[])
    lock_init(&lock);
    cond_init(&cond);
    int thread_pid = thread_create(worker, 0);
+   printf(1, "cond(): thread_pid %d, \n", thread_pid);
    assert(thread_pid > 0);
 
    sleep(20);
    lock_acquire(&lock);
    global = 2;
+   printf(1, "cond(): global %d\n", global);
    cond_signal(&cond);
    sleep(50);
    global = 1;
+   printf(1, "cond(): global %d\n", global);
    lock_release(&lock);
 
    int join_pid = thread_join();
@@ -53,8 +56,10 @@ void
 worker(void *arg_ptr) {
   lock_acquire(&lock);
   assert(global == 0);
+  printf(1, "cond(): global %d\n", global);
   cond_wait(&cond, &lock);
   assert(global == 1);
+  printf(1, "cond(): global %d\n", global);
   lock_release(&lock);
 }
 
