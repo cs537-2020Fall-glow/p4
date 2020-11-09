@@ -28,6 +28,7 @@ USER_PROGS := \
 	two_threads\
 	two_threads_temp\
 	size\
+	testCondInit\
 	zombie
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))

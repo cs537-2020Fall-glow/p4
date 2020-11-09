@@ -129,17 +129,25 @@ sys_join(void)
 int
 sys_cond_init(void)
 {
-  return -1;
+  cond_t *cv;
+  
+  if (argptr(0, (void*) &cv, sizeof(cv)) < 0) {
+    return -1;
+  }
+  
+  cond_init(cv);
+  
+  return 0;
 }
 
 int
 sys_cond_wait(void)
 {
-  return -1;
+  return 0;
 }
 
 int
 sys_cond_signal(void)
 {
-  return -1;
+  return 0;
 }

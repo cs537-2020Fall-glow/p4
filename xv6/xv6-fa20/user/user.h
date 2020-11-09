@@ -1,11 +1,6 @@
 #ifndef _USER_H_
 #define _USER_H_
 
-// P4B
-typedef struct __lock_t {
-  uint locked;
-} lock_t;
-
 struct stat;
 
 // system calls
@@ -53,9 +48,10 @@ int thread_join(void);
 void lock_acquire(lock_t *);
 void lock_release(lock_t *);
 void lock_init(lock_t *);
-void cond_init(cond_t *);
-void cond_wait(cond_t *, lock_t *);
-void cond_signal(cond_t *);
+// P4B - new system calls
+int cond_init(cond_t *);
+int cond_wait(cond_t *, lock_t *);
+int cond_signal(cond_t *);
 
 #endif // _USER_H_
 

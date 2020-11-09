@@ -27,6 +27,8 @@ KERNEL_OBJECTS := \
 	trap.o\
 	uart.o\
 	vectors.o\
+	circleQueue.o\
+	conditionVariable.o\
 	vm.o\
 
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))
