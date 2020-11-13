@@ -29,9 +29,19 @@ void cond_wait(cond_t *cv, lock_t *call_lock) {
   enqueue(cv, proc->pid);
   cprintf("cond_wait(): after enqueue\n");
   cprintf("cond_wait(): pid: %d, head: %d, tail: %d, size: %d, lock name: %s\n", cv->pid[0], cv->head, cv->tail, cv->size, cv->queue_lock.name); // debug
-  // release(&cv->queue_lock);
-  sleep(proc, &cv->queue_lock);
+
+  xchg(&call_lock->locked, 0); // release calling lock
+  sleep(proc, &cv->queue_lock); // sleep
   cprintf("cond_wait(): after sleep\n");
-  xchg(&call_lock->locked, 0); // this is a duplicate of lock_release
+  release(&cv->queue_lock); // release queue lock
+  while (xchg(&call_lock->locked, 1) == 1); // spin until calling lock is reacquired
+
+  //xchg(&call_lock->locked, 0); // this is a duplicate of lock_release
   cprintf("cond_wait(): after release calling lock\n");
+
+  //release(&cv->queue_lock);
+  // sleep(proc, &cv->queue_lock);
+  // cprintf("cond_wait(): after sleep\n");
+  // xchg(&call_lock->locked, 0); // this is a duplicate of lock_release
+  // cprintf("cond_wait(): after release calling lock\n");
 }

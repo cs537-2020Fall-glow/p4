@@ -613,7 +613,8 @@ int join(void **stack) {
 
 void cond_signal(cond_t *cv) {
   if (isEmpty(cv)) {
-    panic("cond_signal(): Condition variable queue is empty!\n");
+    //panic("cond_signal(): Condition variable queue is empty!\n");
+    return;
   }
   
   int headPid;
