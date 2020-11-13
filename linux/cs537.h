@@ -121,4 +121,7 @@ int open_listenfd(int portno);
 int Open_clientfd(char *hostname, int port);
 int Open_listenfd(int port); 
 
+/* P4A - Wrappers */
+int Pthread_create(pthread_t *thread, pthread_attr_t *attr, void*(*start_routine) (void *), void *arg);
+
 #endif /* __CSAPP_H__ */
