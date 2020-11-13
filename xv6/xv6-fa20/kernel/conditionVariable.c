@@ -23,6 +23,7 @@ void cond_wait(cond_t *cv, lock_t *call_lock) {
   
   acquire(&cv->queue_lock);
   enqueue(cv, proc->pid);
+
   xchg(&call_lock->locked, 0); // release calling lock - same as lock_release
   sleep(proc, &cv->queue_lock);
   release(&cv->queue_lock);
