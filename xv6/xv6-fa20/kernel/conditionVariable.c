@@ -10,7 +10,6 @@
 void cond_init(cond_t *cv) {
   setQueueEmpty(cv);
   initlock(&cv->queue_lock, "queuelock");
-  cprintf("condinit(): pid: %d, head: %d, tail: %d, size: %d, lock name: %s\n", cv->pid[0], cv->head, cv->tail, cv->size, cv->queue_lock.name); // debug
 }
 
 void cond_wait(cond_t *cv, lock_t *call_lock) {

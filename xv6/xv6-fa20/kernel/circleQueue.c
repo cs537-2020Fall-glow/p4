@@ -59,14 +59,14 @@ int dequeue(cond_t *pq) {
 }
 
 void setQueueEmpty(cond_t *pq) {
-  cprintf("setQueueEmpty() h %d t %d s %d pid %d\n", pq->head, pq->tail, pq->size, pq->pid[pq->head]);
+  // cprintf("setQueueEmpty() h %d t %d s %d pid %d\n", pq->head, pq->tail, pq->size, pq->pid[pq->head]);
   pq->head = -1;
   pq->tail = -1;
   pq->size = 0;
   for (int i = 0; i < NTHREAD; i++) {
     pq->pid[i] = 0;
   }
-  cprintf("setQueueEmpty() h %d t %d s %d pid %d\n", pq->head, pq->tail, pq->size, pq->pid[pq->head]);
+  // cprintf("setQueueEmpty() h %d t %d s %d pid %d\n", pq->head, pq->tail, pq->size, pq->pid[pq->head]);
 }
 
 /**

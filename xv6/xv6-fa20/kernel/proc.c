@@ -120,12 +120,9 @@ growproc(int n)
   }
   proc->sz = sz;
 
-  // P4B - update size in threads created from this process
+  // P4B - update size in all threads of this proc
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    // if(p->parent != proc) {
-    //   continue;
-    // }
     if (p->pgdir != proc->pgdir) {
       continue;
     }
@@ -203,15 +200,10 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
   
-  //cprintf("exit(): proc->pid: %d is exiting\n", proc->pid);
-  
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == proc){
-      //cprintf("exit: p->pid: %d\n", p->pid);
-      // cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
       p->parent = initproc;
-      // cprintf("exit: p->parent->pid: %d\n", p->parent->pid);
       if(p->state == ZOMBIE)
         wakeup1(initproc);
     }
@@ -239,15 +231,11 @@ wait(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != proc)
         continue;
-      // P4B: Wait doesn't wait for child threads (same addr space).
-      // Wait only waits for child procs
       havekids = 1;
       if(p->state == ZOMBIE){ 
         // Found one.
-        // cprintf("wait(): Found p->pid: %d\n", p->pid);
         pid = p->pid;
         p->state = UNUSED;
-        p->kstack = 0;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -263,14 +251,12 @@ wait(void)
           }
         }
         if (notLastThread) {
-          // cprintf("wait(): not last ref\n");
           p->pgdir = 0;
-          p->kstack = 0;
         } else {
-          // cprintf("wait(): last ref\n");
           freevm(p->pgdir);
           kfree(p->kstack);
         }
+        p->kstack = 0;
         release(&ptable.lock);
         return pid;
       }
@@ -494,49 +480,35 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   struct proc *np;
   uint sp, ustack[2]; // for setting up user stack
 
-  
-  
-  // cprintf("clone(): 460: fcn: %p, arg: %d, stack: %d\n", fcn, *(int*)arg, stack); // debug
-  // cprintf("in clone() 460: proc->pid: %d\n", proc->pid); // debug
-
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
-  // cprintf("in clone() 465: after allocproc\n"); // debug
-
+  
   // P4B Use the same page directory for thread (same proc)
   np->pgdir = proc->pgdir; 
 
   np->stackHigh = (uint) stack + PGSIZE;
   np->sz = proc->sz; // higher addr of new thread stack (one page)
-  //cprintf("clone(): pid %d np->sz = %d\n", np->pid, np->sz);
   np->parent = proc;
-  // cprintf("in clone() 477: np->parent->pid: %d\n", np->parent->pid); // debug
   
   *np->tf = *proc->tf;
-  // cprintf("in clone() 478: after pgdir and tf\n"); // debug
 
-  // Clear %eax so that fork returns 0 in the child.
+  // (comment from exec) Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
   
-  // P4B set up user stack
-  // TODO? The parameter arg in clone() can be a NULL pointer, and clone() should not fail.
-  //sp = np->sz;
+  // Set up user stack
   sp = np->stackHigh;
 
   ustack[0] = 0xffffffff;  // graceful exit is handled in trap.c
   ustack[1] = (uint)arg;
 
   sp -= sizeof(arg) + 4;
-  // cprintf("in clone() 503: before copyout ustack\n"); // debug
   if(copyout(np->pgdir, sp, ustack, sizeof(arg) + 4) < 0)
     goto bad;
-  // cprintf("in clone() 506: after ustack\n"); // debug
   
   // P4B eip and esp
   np->tf->eip = (uint) fcn;
   np->tf->esp = sp;
-  // cprintf("in clone() 511: after eip\n"); // debug
 
   for(i = 0; i < NOFILE; i++)
     if(proc->ofile[i])
@@ -546,9 +518,6 @@ clone(void(*fcn)(void*), void *arg, void *stack)
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
-  // cprintf("in clone() 521: before return\n"); // debug
-
-  //cprintf("clone(): pid %d stack is %d\n", np->pid, (uint)stack);
 
   return pid;
   
@@ -556,29 +525,22 @@ clone(void(*fcn)(void*), void *arg, void *stack)
     return -1;
 }
 
-// TODO: reduce duplicative code with wait
+// P4B join
 int join(void **stack) {
   struct proc *p;
   int havekids, pid;
-
-  //cprintf("join(): called by %d\n", proc->pid);
 
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for zombie children.
     havekids = 0;
-    // cprintf("join(): outer for\n");
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      // cprintf("join(): inner for\n");
       if (p->pid != 0) {
-        //cprintf("join(): p->pid: %d\n", p->pid); //P4B debugging
       }
-      if(p->parent != proc) {
-        //cprintf("join(): not same parent\n"); //debug
+      if(p->parent != proc) { // Only join child thread (proc is parent)
         continue;
       }
-      if (p->pgdir != proc->pgdir) { // only join if same thread
-        //cprintf("join(): same pgdir\n"); //debug
+      if (p->pgdir != proc->pgdir) { // Only join if same thread
         continue;
       }
       havekids = 1;
@@ -587,7 +549,7 @@ int join(void **stack) {
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
-        // freevm(p->pgdir);
+        // P4B - Wait frees the pgdir here; don't do that for threads
         p->state = UNUSED;
         p->pid = 0;
         p->parent = 0;
@@ -612,25 +574,22 @@ int join(void **stack) {
 }
 
 void cond_signal(cond_t *cv) {
-  if (isEmpty(cv)) {
-    //panic("cond_signal(): Condition variable queue is empty!\n");
+  if (isEmpty(cv)) { // CV is empty, don't do anything
     return;
   }
   
   int headPid;
   struct proc* p;
   
-  cprintf("cond_signal(): proc->pid: %d\n", proc->pid); // debug
+  // Remove head from front of CV queue
   acquire(&cv->queue_lock);
   headPid = dequeue(cv);
-  cprintf("cond_signal(): headPid: %d\n", headPid);
   release(&cv->queue_lock);
   
-  // Wake up thread at front of cv queue
+  // Wake up thread that was at front of CV queue
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if (p->pid == headPid) {
       wakeup(p);
-      cprintf("cond_signal(): p->pid: %d\n", p->pid);
       break;
     }
   }
