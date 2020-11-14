@@ -55,12 +55,12 @@ void *workerPool(void *arg) {
   while (1) {
     Pthread_mutex_lock(&bufferLock);
 
-    // wait for buffer to not be empty
+    // Wait for buffer to not be empty
     while (bufferSpotsUsed == 0) {
       Pthread_cond_wait(&requestAccepted, &bufferLock);
     }
 
-    // find fd and start work
+    // Find fd and start work
     foundFileDescriptor = 0;
     for (int i = 0; i < maxBuffer; i++) {
       if (bufferArray[i].fileDescriptor != 0) {
@@ -69,13 +69,19 @@ void *workerPool(void *arg) {
         break;
       }
     }
+    // Prevent requests to fd 0 on subsequent loops
+    // (requestHandle is outside of locking)
+    if (foundFileDescriptor == 0) {
+      Pthread_mutex_unlock(&bufferLock);
+      continue;
+    }
+    
+    // Tell main that buffer was cleared
     bufferSpotsUsed--;
     Pthread_cond_signal(&requestProcessed);
     Pthread_mutex_unlock(&bufferLock);
-
-    if (foundFileDescriptor == 0) {
-      continue;
-    }
+    
+    // Do work
     requestHandle(foundFileDescriptor);
     Close(foundFileDescriptor);
   }
@@ -90,7 +96,6 @@ int main(int argc, char *argv[]) {
   struct threadBuffer *bufferArray;
   bufferArray =
       (struct threadBuffer *)Malloc(maxBuffer * sizeof(struct threadBuffer));
-
   for (int i = 0; i < maxBuffer; i++) {
     bufferArray[i].fileDescriptor = 0;
   }
@@ -110,7 +115,7 @@ int main(int argc, char *argv[]) {
     // Main thread waits until buffer has empty spot
     Pthread_mutex_lock(&bufferLock);
     while (bufferSpotsUsed == maxBuffer) {
-      Pthread_cond_wait(&requestProcessed, &bufferLock);  // TODO: wrapper
+      Pthread_cond_wait(&requestProcessed, &bufferLock);
     }
 
     // Add new request to first open spot
