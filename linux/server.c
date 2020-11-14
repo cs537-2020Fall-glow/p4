@@ -92,27 +92,6 @@ void *workerPool(void *arg) {
           //  foundFileDescriptor);
     requestHandle(foundFileDescriptor);
     Close(foundFileDescriptor);
-
-    // worker finished, free the buffer
-    // pthread_mutex_lock(&bufferLock);
-    // printf("worker %ld: finished fd %d\n", pthread_self(),
-    // foundFileDescriptor);
-    
-    // remove me
-    // for (int i = 0; i < maxBuffer; i++) {
-    //   if (bufferArray[i].fileDescriptor == foundFileDescriptor) {
-    //     bufferArray[i].threadId = 0;
-    //     bufferArray[i].fileDescriptor = 0;
-    //     foundFileDescriptor = 0;
-    //     break;
-    //   }
-    // }
-    // printf("worker %ld: signal main bufferSpotsUsed %d\n", threadId,
-          //  bufferSpotsUsed);
-          
-          
-    // pthread_cond_signal(&requestProcessed);
-    // pthread_mutex_unlock(&bufferLock);
   }
 }
 
