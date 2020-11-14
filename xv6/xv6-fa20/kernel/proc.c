@@ -521,7 +521,7 @@ clone(void(*fcn)(void*), void *arg, void *stack)
 
   return pid;
   
-  bad: // P4B TODO?
+  bad:
     return -1;
 }
 
