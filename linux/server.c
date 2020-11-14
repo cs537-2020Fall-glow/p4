@@ -49,49 +49,62 @@ void getargs(int *port, int argc, char *argv[]) {
   }
 }
 
-void* workerPool(void *arg) {
-  struct threadBuffer *bufferArray = (struct threadBuffer*) arg;
-  printf("worker: tid %ld started\n", pthread_self());
+void *workerPool(void *arg) {
+  struct threadBuffer *bufferArray = (struct threadBuffer *)arg;
   // for (int i = 0; i < maxBuffer; i++)
   // {
-  //   printf("buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId, bufferArray[i].fileDescriptor);
+  //   printf("buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId,
+  //   bufferArray[i].fileDescriptor);
   // }
+  long unsigned int threadId = pthread_self();
+  // printf("worker %ld: started\n", threadId);
+  int foundFileDescriptor;
   
   while (1) {
     pthread_mutex_lock(&bufferLock);
-    
-    // wait for buffer to accept a request
+
+    // wait for buffer to not be empty
     while (bufferSpotsUsed == 0) {
+      // printf("worker %ld: waiting\n", threadId);
       pthread_cond_wait(&requestAccepted, &bufferLock);
     }
-    
+
     // find fd and start work
-    int foundFileDescriptor;
+    foundFileDescriptor = 0;
     for (int i = 0; i < maxBuffer; i++) {
-      if (bufferArray[i].threadId == 0 &&
-          bufferArray[i].fileDescriptor != 0) {
-        bufferArray[i].threadId = pthread_self();
+      if (bufferArray[i].threadId == 0 && bufferArray[i].fileDescriptor != 0) {
+        bufferArray[i].threadId = threadId;
         foundFileDescriptor = bufferArray[i].fileDescriptor;
-        printf("worker: buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId, foundFileDescriptor);
+        // printf("worker %ld: buffer[%d] tid %ld fd %d\n", threadId, i,
+              //  bufferArray[i].threadId, foundFileDescriptor);
         break;
       }
     }
     pthread_mutex_unlock(&bufferLock);
+
+    if (foundFileDescriptor == 0) {
+      continue;
+    }
+    // printf("worker %ld: run requestHandler fd %d\n", threadId,
+          //  foundFileDescriptor);
     requestHandle(foundFileDescriptor);
     Close(foundFileDescriptor);
-    
+
     // worker finished, free the buffer
     pthread_mutex_lock(&bufferLock);
-    printf("worker %ld: finished fd %d\n", pthread_self(), foundFileDescriptor);
+    // printf("worker %ld: finished fd %d\n", pthread_self(),
+    // foundFileDescriptor);
     for (int i = 0; i < maxBuffer; i++) {
       if (bufferArray[i].fileDescriptor == foundFileDescriptor) {
         bufferArray[i].threadId = 0;
         bufferArray[i].fileDescriptor = 0;
+        foundFileDescriptor = 0;
         break;
       }
     }
     bufferSpotsUsed--;
-    printf("worker: bufferSpotsUsed %d\n", bufferSpotsUsed);
+    // printf("worker %ld: signal main bufferSpotsUsed %d\n", threadId,
+          //  bufferSpotsUsed);
     pthread_cond_signal(&requestProcessed);
     pthread_mutex_unlock(&bufferLock);
   }
@@ -104,22 +117,25 @@ int main(int argc, char *argv[]) {
   getargs(&port, argc, argv);
 
   struct threadBuffer *bufferArray;
-  bufferArray = (struct threadBuffer *) malloc(maxBuffer * sizeof(struct threadBuffer));
-  
+  bufferArray =
+      (struct threadBuffer *)malloc(maxBuffer * sizeof(struct threadBuffer));
+
   if (bufferArray == NULL) {
     fprintf(stderr, "Could not allocate space for buffer\n");
     exit(1);
   }
-  
-  for (int i = 0; i < maxBuffer; i++)
-  {
+
+  for (int i = 0; i < maxBuffer; i++) {
     bufferArray[i].threadId = 0;
     bufferArray[i].fileDescriptor = 0;
   }
-    
+
+  bufferSpotsUsed = 0;
+
   // for (int i = 0; i < maxBuffer; i++)
   // {
-  //   printf("main: buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId, bufferArray[i].fileDescriptor);
+  //   printf("main: buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId,
+  //   bufferArray[i].fileDescriptor);
   // }
   // printf("main start threads\n");
 
@@ -132,15 +148,27 @@ int main(int argc, char *argv[]) {
   while (1) {
     clientlen = sizeof(clientaddr);
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *)&clientlen);
+    // printf("main: connfd: %d\n", connfd);
 
     // Main thread waits until buffer has empty spot
     pthread_mutex_lock(&bufferLock);
     while (bufferSpotsUsed == maxBuffer) {
+      // printf("main: waiting\n");
+      // Close(connfd);
+      // connfd = 0;
       pthread_cond_wait(&requestProcessed, &bufferLock);  // TODO: wrapper
     }
+    // printf("main: after wait connfd: %d\n", connfd);
+
+    // if (connfd == 0) {
+    //   for (int i = 0; i < maxBuffer; i++) {
+    //     printf("main: buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId,
+    //            bufferArray[i].fileDescriptor);
+    //   }
+    //   continue;
+    // }
 
     // Add new request to first open spot
-    // printf("main: connfd: %d\n", connfd);
     for (int i = 0; i < maxBuffer; i++) {
       if (bufferArray[i].fileDescriptor == 0) {
         bufferArray[i].fileDescriptor = connfd;
