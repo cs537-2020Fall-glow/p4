@@ -51,3 +51,4 @@ Module.symvers
 Mkfile.old
 dkms.conf
 xv6/xv6-fa20/runtests.log
+linux/runtests.log

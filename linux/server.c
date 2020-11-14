@@ -57,7 +57,6 @@ void* workerPool(void *arg) {
   //   printf("buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId, bufferArray[i].fileDescriptor);
   // }
   
-  
   while (1) {
     pthread_mutex_lock(&bufferLock);
     
@@ -83,14 +82,16 @@ void* workerPool(void *arg) {
     
     // worker finished, free the buffer
     pthread_mutex_lock(&bufferLock);
+    printf("worker %ld: finished fd %d\n", pthread_self(), foundFileDescriptor);
     for (int i = 0; i < maxBuffer; i++) {
       if (bufferArray[i].fileDescriptor == foundFileDescriptor) {
         bufferArray[i].threadId = 0;
-        foundFileDescriptor = 0;
+        bufferArray[i].fileDescriptor = 0;
         break;
       }
     }
     bufferSpotsUsed--;
+    printf("worker: bufferSpotsUsed %d\n", bufferSpotsUsed);
     pthread_cond_signal(&requestProcessed);
     pthread_mutex_unlock(&bufferLock);
   }
@@ -102,54 +103,35 @@ int main(int argc, char *argv[]) {
 
   getargs(&port, argc, argv);
 
-  // pthread_cond_t bufferQueue;
-  pthread_t pool[maxThreads];
-
-  // TODO: remove?
-  // pthread_mutexattr_t mutexAttribute;
-  // pthread_mutexattr_init(&mutexAttribute);
-  // pthread_mutex_init(&bufferLock, NULL);
-  // pthread_cond_init(&)
-
-  //
-  // CS537: Create some threads...
-  //
-
-  struct threadBuffer *bufferArray =
-      malloc(maxBuffer * sizeof(struct threadBuffer));
-  //memset(bufferArray, 0, maxBuffer * sizeof(struct threadBuffer));
+  struct threadBuffer *bufferArray;
+  bufferArray = (struct threadBuffer *) malloc(maxBuffer * sizeof(struct threadBuffer));
+  
+  if (bufferArray == NULL) {
+    fprintf(stderr, "Could not allocate space for buffer\n");
+    exit(1);
+  }
   
   for (int i = 0; i < maxBuffer; i++)
   {
     bufferArray[i].threadId = 0;
     bufferArray[i].fileDescriptor = 0;
   }
-  
-  for (int i = 0; i < maxBuffer; i++)
-  {
-    printf("buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId, bufferArray[i].fileDescriptor);
-  }
-  
-  
-  if (bufferArray == NULL) {
-    fprintf(stderr, "Could not allocate space for buffer\n");
-    exit(1);
-  }
+    
+  // for (int i = 0; i < maxBuffer; i++)
+  // {
+  //   printf("main: buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId, bufferArray[i].fileDescriptor);
+  // }
+  // printf("main start threads\n");
 
+  pthread_t pool[maxThreads];
   for (int i = 0; i < maxThreads; i++) {
-    pthread_create(&pool[i], NULL, workerPool, &bufferArray);
+    pthread_create(&pool[i], NULL, workerPool, bufferArray);
   }
 
   listenfd = Open_listenfd(port);
   while (1) {
     clientlen = sizeof(clientaddr);
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *)&clientlen);
-
-    //
-    // CS537: In general, don't handle the request in the main thread.
-    // Save the relevant info in a buffer and have one of the worker threads
-    // do the work.
-    //
 
     // Main thread waits until buffer has empty spot
     pthread_mutex_lock(&bufferLock);
@@ -158,10 +140,11 @@ int main(int argc, char *argv[]) {
     }
 
     // Add new request to first open spot
+    // printf("main: connfd: %d\n", connfd);
     for (int i = 0; i < maxBuffer; i++) {
-      if (bufferArray[i].threadId == 0) {
+      if (bufferArray[i].fileDescriptor == 0) {
         bufferArray[i].fileDescriptor = connfd;
-        printf("main: buffer[%d] fd %d\n", i, bufferArray[i].fileDescriptor);
+        // printf("main: buffer[%d] fd %d\n", i, bufferArray[i].fileDescriptor);
         break;
       }
     }
