@@ -23,6 +23,17 @@ pthread_cond_t requestAccepted = PTHREAD_COND_INITIALIZER;
 pthread_cond_t requestProcessed = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t bufferLock = PTHREAD_MUTEX_INITIALIZER;
 
+// debugging time
+struct timespec startTime;
+
+time_t getSeconds() {
+  struct timespec ts;
+  timespec_get(&ts, TIME_UTC);
+  
+  return (ts.tv_sec - startTime.tv_sec);
+}
+
+
 // CS537: Parse the new arguments too
 void getargs(int *port, int argc, char *argv[]) {
   if (argc != 4) {
@@ -57,7 +68,7 @@ void *workerPool(void *arg) {
   //   bufferArray[i].fileDescriptor);
   // }
   long unsigned int threadId = pthread_self();
-  // printf("worker %ld: started\n", threadId);
+  printf("worker %ld %ld: started\n", threadId, getSeconds());
   int foundFileDescriptor;
   
   while (1) {
@@ -65,7 +76,7 @@ void *workerPool(void *arg) {
 
     // wait for buffer to not be empty
     while (bufferSpotsUsed == 0) {
-      // printf("worker %ld: waiting\n", threadId);
+      printf("worker %ld %ld: waiting\n", threadId, getSeconds());
       pthread_cond_wait(&requestAccepted, &bufferLock);
     }
 
@@ -76,28 +87,34 @@ void *workerPool(void *arg) {
         // bufferArray[i].threadId = threadId;
         foundFileDescriptor = bufferArray[i].fileDescriptor;
         bufferArray[i].fileDescriptor = 0;
-        // printf("worker %ld: buffer[%d] tid %ld fd %d\n", threadId, i,
-              //  bufferArray[i].threadId, foundFileDescriptor);
+        printf("worker %ld %ld: buffer[%d] fd %d\n", threadId, getSeconds(), i, foundFileDescriptor);
         break;
       }
     }
-    bufferSpotsUsed--;
-    pthread_cond_signal(&requestProcessed);
     pthread_mutex_unlock(&bufferLock);
 
     if (foundFileDescriptor == 0) {
       continue;
     }
-    // printf("worker %ld: run requestHandler fd %d\n", threadId,
-          //  foundFileDescriptor);
+    printf("worker %ld %ld: run requestHandler fd %d\n", threadId, getSeconds(),
+           foundFileDescriptor);
     requestHandle(foundFileDescriptor);
     Close(foundFileDescriptor);
+    
+    pthread_mutex_lock(&bufferLock);
+    printf("worker %ld %ld: signal main that buffer is empty\n", threadId, getSeconds());
+    bufferSpotsUsed--;
+    pthread_cond_signal(&requestProcessed);
+    pthread_mutex_unlock(&bufferLock);
   }
 }
 
 int main(int argc, char *argv[]) {
   int listenfd, connfd, port, clientlen;
   struct sockaddr_in clientaddr;
+  
+  int numRequests = 0; // debug
+  timespec_get(&startTime, TIME_UTC); // debug set start time
 
   getargs(&port, argc, argv);
 
@@ -132,23 +149,28 @@ int main(int argc, char *argv[]) {
   while (1) {
     clientlen = sizeof(clientaddr);
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *)&clientlen);
+    printf("main %ld: connfd %d accepted\n", getSeconds(), connfd);
 
     // Main thread waits until buffer has empty spot
     pthread_mutex_lock(&bufferLock);
     while (bufferSpotsUsed == maxBuffer) {
+      printf("main %ld: waiting for buffer to empty\n", getSeconds());
       pthread_cond_wait(&requestProcessed, &bufferLock);  // TODO: wrapper
     }
 
     // Add new request to first open spot
     for (int i = 0; i < maxBuffer; i++) {
       if (bufferArray[i].fileDescriptor == 0) {
+        numRequests++;
+        printf("main %ld: numRequests %d\n", getSeconds(), numRequests);
         bufferArray[i].fileDescriptor = connfd;
-        // printf("main: buffer[%d] fd %d\n", i, bufferArray[i].fileDescriptor);
+        printf("main %ld: buffer[%d] fd %d\n", getSeconds(), i, bufferArray[i].fileDescriptor);
         break;
       }
     }
 
     // Tell pool threads that buffer has accepted request
+    printf("main %ld: signal worker connfd %d\n", getSeconds(), connfd);
     bufferSpotsUsed++;
     pthread_cond_signal(&requestAccepted);
     pthread_mutex_unlock(&bufferLock);
