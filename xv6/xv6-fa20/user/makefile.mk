@@ -17,6 +17,7 @@ USER_PROGS := \
 	usertests\
 	wc\
 	testThread1\
+	testCloneNullArg\
 	clone_clone\
 	create\
 	create2\

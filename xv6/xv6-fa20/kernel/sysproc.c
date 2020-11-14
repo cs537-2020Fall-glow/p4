@@ -107,9 +107,6 @@ sys_clone(void)
     return -1;
   }
   
-  // debug
-  cprintf("in sys_clone - fcn: %p, arg: %d, stack: %d\n", fcn, *(int*)arg, stack);
-  
   return clone(fcn, arg, stack);
 }
 

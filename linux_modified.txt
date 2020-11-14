@@ -1,0 +1,8 @@
+.gitignore
+README.md
+linux/Makefile
+linux/cs537.c
+linux/cs537.h
+linux/server.c
+partner.txt
+xv6/xv6-fa20/kernel/conditionVariable.c
