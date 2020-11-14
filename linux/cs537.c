@@ -578,3 +578,14 @@ void Pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *lock) {
 void Pthread_cond_signal(pthread_cond_t *cond) {
   assert(pthread_cond_signal(cond) == 0);
 }
+
+void* Malloc(size_t size) {
+  void* allocated = malloc(size);
+  
+  if (allocated == NULL) {
+    fprintf(stderr, "Could not allocate space for buffer\n");
+    exit(1);
+  }
+  
+  return allocated;
+}

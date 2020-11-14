@@ -130,5 +130,6 @@ void Pthread_mutex_lock(pthread_mutex_t *lock);
 void Pthread_mutex_unlock(pthread_mutex_t *lock);
 void Pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *lock);
 void Pthread_cond_signal(pthread_cond_t *cond);
+void* Malloc(size_t size);
 
 #endif /* __CSAPP_H__ */
