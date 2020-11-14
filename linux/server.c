@@ -14,7 +14,7 @@
 //
 
 struct threadBuffer {
-  long unsigned int threadId;
+  // long unsigned int threadId;
   int fileDescriptor;
 };
 
@@ -72,14 +72,17 @@ void *workerPool(void *arg) {
     // find fd and start work
     foundFileDescriptor = 0;
     for (int i = 0; i < maxBuffer; i++) {
-      if (bufferArray[i].threadId == 0 && bufferArray[i].fileDescriptor != 0) {
-        bufferArray[i].threadId = threadId;
+      if (/*bufferArray[i].threadId == 0 && */bufferArray[i].fileDescriptor != 0) {
+        // bufferArray[i].threadId = threadId;
         foundFileDescriptor = bufferArray[i].fileDescriptor;
+        bufferArray[i].fileDescriptor = 0;
         // printf("worker %ld: buffer[%d] tid %ld fd %d\n", threadId, i,
               //  bufferArray[i].threadId, foundFileDescriptor);
         break;
       }
     }
+    bufferSpotsUsed--;
+    pthread_cond_signal(&requestProcessed);
     pthread_mutex_unlock(&bufferLock);
 
     if (foundFileDescriptor == 0) {
@@ -89,24 +92,6 @@ void *workerPool(void *arg) {
           //  foundFileDescriptor);
     requestHandle(foundFileDescriptor);
     Close(foundFileDescriptor);
-
-    // worker finished, free the buffer
-    pthread_mutex_lock(&bufferLock);
-    // printf("worker %ld: finished fd %d\n", pthread_self(),
-    // foundFileDescriptor);
-    for (int i = 0; i < maxBuffer; i++) {
-      if (bufferArray[i].fileDescriptor == foundFileDescriptor) {
-        bufferArray[i].threadId = 0;
-        bufferArray[i].fileDescriptor = 0;
-        foundFileDescriptor = 0;
-        break;
-      }
-    }
-    bufferSpotsUsed--;
-    // printf("worker %ld: signal main bufferSpotsUsed %d\n", threadId,
-          //  bufferSpotsUsed);
-    pthread_cond_signal(&requestProcessed);
-    pthread_mutex_unlock(&bufferLock);
   }
 }
 
@@ -126,7 +111,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (int i = 0; i < maxBuffer; i++) {
-    bufferArray[i].threadId = 0;
+    // bufferArray[i].threadId = 0;
     bufferArray[i].fileDescriptor = 0;
   }
 
