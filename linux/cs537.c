@@ -1,6 +1,5 @@
 #include "cs537.h"
-// P4A
-#include <assert.h>
+// #include <pthread.h>
 
 /************************** 
  * Error-handling functions
@@ -559,7 +558,23 @@ int Open_listenfd(int port)
     return rc;
 }
 
-// // P4A wrappers
-// int Pthread_create(pthread_t *thread, pthread_attr_t *attr, void*(*start_routine) (void *), void *arg) {
-//   assert(pthread_create(thread, attr, start_routine, arg) == 0);
-// }
+// P4A wrappers
+void Pthread_create(pthread_t *thread, pthread_attr_t *attr, void*(*start_routine) (void *), void *arg) {
+  assert(pthread_create(thread, attr, start_routine, arg) == 0);
+}
+
+void Pthread_mutex_lock(pthread_mutex_t *lock) {
+  assert(pthread_mutex_lock(lock) == 0);
+}
+
+void Pthread_mutex_unlock(pthread_mutex_t *lock) {
+  assert(pthread_mutex_unlock(lock) == 0);
+}
+
+void Pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *lock) {
+  assert(pthread_cond_wait(cond, lock) == 0);
+}
+
+void Pthread_cond_signal(pthread_cond_t *cond) {
+  assert(pthread_cond_signal(cond) == 0);
+}

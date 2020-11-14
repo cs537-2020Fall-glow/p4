@@ -23,7 +23,10 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
+// P4A wrappers
+#include <assert.h>
+#include <pthread.h>
+// #include <request.h>
 
 /* Default file permissions are DEF_MODE & ~DEF_UMASK */
 /* $begin createmasks */
@@ -122,6 +125,10 @@ int Open_clientfd(char *hostname, int port);
 int Open_listenfd(int port); 
 
 /* P4A - Wrappers */
-int Pthread_create(pthread_t *thread, pthread_attr_t *attr, void*(*start_routine) (void *), void *arg);
+void Pthread_create(pthread_t *thread, pthread_attr_t *attr, void*(*start_routine) (void *), void *arg);
+void Pthread_mutex_lock(pthread_mutex_t *lock);
+void Pthread_mutex_unlock(pthread_mutex_t *lock);
+void Pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *lock);
+void Pthread_cond_signal(pthread_cond_t *cond);
 
 #endif /* __CSAPP_H__ */

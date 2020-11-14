@@ -33,7 +33,6 @@ time_t getSeconds() {
   return (ts.tv_sec - startTime.tv_sec);
 }
 
-
 // CS537: Parse the new arguments too
 void getargs(int *port, int argc, char *argv[]) {
   if (argc != 4) {
@@ -72,12 +71,12 @@ void *workerPool(void *arg) {
   int foundFileDescriptor;
   
   while (1) {
-    pthread_mutex_lock(&bufferLock);
+    Pthread_mutex_lock(&bufferLock);
 
     // wait for buffer to not be empty
     while (bufferSpotsUsed == 0) {
       printf("worker %ld %ld: waiting\n", threadId, getSeconds());
-      pthread_cond_wait(&requestAccepted, &bufferLock);
+      Pthread_cond_wait(&requestAccepted, &bufferLock);
     }
 
     // find fd and start work
@@ -91,7 +90,10 @@ void *workerPool(void *arg) {
         break;
       }
     }
-    pthread_mutex_unlock(&bufferLock);
+    printf("worker %ld %ld: signal main that buffer is empty\n", threadId, getSeconds());
+    bufferSpotsUsed--;
+    Pthread_cond_signal(&requestProcessed);
+    Pthread_mutex_unlock(&bufferLock);
 
     if (foundFileDescriptor == 0) {
       continue;
@@ -100,12 +102,6 @@ void *workerPool(void *arg) {
            foundFileDescriptor);
     requestHandle(foundFileDescriptor);
     Close(foundFileDescriptor);
-    
-    pthread_mutex_lock(&bufferLock);
-    printf("worker %ld %ld: signal main that buffer is empty\n", threadId, getSeconds());
-    bufferSpotsUsed--;
-    pthread_cond_signal(&requestProcessed);
-    pthread_mutex_unlock(&bufferLock);
   }
 }
 
@@ -142,7 +138,7 @@ int main(int argc, char *argv[]) {
 
   pthread_t pool[maxThreads];
   for (int i = 0; i < maxThreads; i++) {
-    pthread_create(&pool[i], NULL, workerPool, bufferArray);
+    Pthread_create(&pool[i], NULL, workerPool, bufferArray);
   }
 
   listenfd = Open_listenfd(port);
@@ -152,10 +148,10 @@ int main(int argc, char *argv[]) {
     printf("main %ld: connfd %d accepted\n", getSeconds(), connfd);
 
     // Main thread waits until buffer has empty spot
-    pthread_mutex_lock(&bufferLock);
+    Pthread_mutex_lock(&bufferLock);
     while (bufferSpotsUsed == maxBuffer) {
       printf("main %ld: waiting for buffer to empty\n", getSeconds());
-      pthread_cond_wait(&requestProcessed, &bufferLock);  // TODO: wrapper
+      Pthread_cond_wait(&requestProcessed, &bufferLock);  // TODO: wrapper
     }
 
     // Add new request to first open spot
@@ -172,7 +168,7 @@ int main(int argc, char *argv[]) {
     // Tell pool threads that buffer has accepted request
     printf("main %ld: signal worker connfd %d\n", getSeconds(), connfd);
     bufferSpotsUsed++;
-    pthread_cond_signal(&requestAccepted);
-    pthread_mutex_unlock(&bufferLock);
+    Pthread_cond_signal(&requestAccepted);
+    Pthread_mutex_unlock(&bufferLock);
   }
 }
