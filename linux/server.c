@@ -137,7 +137,6 @@ int main(int argc, char *argv[]) {
   //   printf("main: buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId,
   //   bufferArray[i].fileDescriptor);
   // }
-  // printf("main start threads\n");
 
   pthread_t pool[maxThreads];
   for (int i = 0; i < maxThreads; i++) {
@@ -148,25 +147,12 @@ int main(int argc, char *argv[]) {
   while (1) {
     clientlen = sizeof(clientaddr);
     connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *)&clientlen);
-    // printf("main: connfd: %d\n", connfd);
 
     // Main thread waits until buffer has empty spot
     pthread_mutex_lock(&bufferLock);
     while (bufferSpotsUsed == maxBuffer) {
-      // printf("main: waiting\n");
-      // Close(connfd);
-      // connfd = 0;
       pthread_cond_wait(&requestProcessed, &bufferLock);  // TODO: wrapper
     }
-    // printf("main: after wait connfd: %d\n", connfd);
-
-    // if (connfd == 0) {
-    //   for (int i = 0; i < maxBuffer; i++) {
-    //     printf("main: buffer[%d] tid %ld fd %d\n", i, bufferArray[i].threadId,
-    //            bufferArray[i].fileDescriptor);
-    //   }
-    //   continue;
-    // }
 
     // Add new request to first open spot
     for (int i = 0; i < maxBuffer; i++) {
